@@ -23,16 +23,34 @@ app.get('/uncaught', function(req, res, next) {
   throw err;
 });
 
+app.get('/caught-403', function(req, res, next) {
+  var err = new Error('I am a 403 error');
+  err.status = 403;
+  next(err);
+});
+
+app.get('/caught-500', function(req, res, next) {
+  var err = new Error('I am a 403 error');
+  err.status = 500;
+  next(err);
+});
+
 
 process.on('exit', function() {
-  assert.equal(airbrake.notify.callCount, 3);
+  assert.equal(airbrake.notify.callCount, 4);
   process.exit();
 });
 
 http.request({port: common.port, path: '/caught'}, function() {
   assert.equal(airbrake.notify.callCount, 1);
-  http.request({port: common.port, path: '/uncaught'}, function () {
-    assert.equal(airbrake.notify.callCount, 2);
-    throw new Error('I am really uncaught');
+  http.request({port: common.port, path: '/caught-403'}, function() {
+    assert.equal(airbrake.notify.callCount, 1);
+    http.request({port: common.port, path: '/caught-500'}, function() {
+      assert.equal(airbrake.notify.callCount, 2);
+      http.request({port: common.port, path: '/uncaught'}, function () {
+        assert.equal(airbrake.notify.callCount, 3);
+        throw new Error('I am really uncaught');
+      }).end();
+    }).end();
   }).end();
 }).end();
